@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   utils.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: uvadakku <uvadakku@student.42.fr>          +#+  +:+       +#+        */
+/*   By: us <us@student.42.fr>                      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/20 15:16:23 by uvadakku          #+#    #+#             */
-/*   Updated: 2025/10/27 13:41:48 by uvadakku         ###   ########.fr       */
+/*   Updated: 2025/11/09 12:43:35 by us               ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,8 +32,14 @@ int	open_file(char *file, int mode)
 		ret = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
 	if (ret < 0)
 	{
-		perror("open_file failed");
-		exit (1);
+		if (mode == 0)
+		{
+			ret = open("/dev/null", O_RDONLY);
+			if (ret < 0)
+				exit(1);
+		}
+		else
+			exit(1);
 	}
 	return (ret);
 }
@@ -72,33 +78,5 @@ char	*my_getenv(char *name, char **env)
 		free(sub);
 		i++;
 	}
-	return (NULL);
-}
-
-char	*find_path(char *cmd, char **env)
-{
-	int		i;
-	char	*exec;
-	char	**all_path;
-	char	*path_part;
-	char	*env_path;
-
-	env_path = my_getenv("PATH", env);
-	if (!env_path)
-		return (NULL);
-	all_path = ft_split(env_path, ':');
-	if (!all_path)
-		return (NULL);
-	i = -1;
-	while (all_path[++i])
-	{
-		path_part = ft_strjoin(all_path[i], "/");
-		exec = ft_strjoin(path_part, cmd);
-		free(path_part);
-		if (access(exec, F_OK | X_OK) == 0)
-			return (exec);
-		free(exec);
-	}
-	ft_free_tab(all_path);
 	return (NULL);
 }
