@@ -1,4 +1,16 @@
-# include "pipex.h"
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   helper.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: uvadakku <uvadakku@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/11/17 11:57:15 by uvadakku          #+#    #+#             */
+/*   Updated: 2025/11/17 12:44:11 by uvadakku         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "pipex.h"
 
 char	*search_in_path(char *cmd, char **all_path)
 {
@@ -23,6 +35,30 @@ char	*search_in_path(char *cmd, char **all_path)
 	return (NULL);
 }
 
+char	*my_getenv(char *name, char **env)
+{
+	int		i;
+	int		j;
+	char	*sub;
+
+	i = 0;
+	while (env[i])
+	{
+		j = 0;
+		while (env[i][j] && env[i][j] != '=')
+			j++;
+		sub = ft_substr(env[i], 0, j);
+		if (ft_strcmp(sub, name) == 0)
+		{
+			free(sub);
+			return (env[i] + j + 1);
+		}
+		free(sub);
+		i++;
+	}
+	return (NULL);
+}
+
 char	*handle_direct_access(char **cmd_parts)
 {
 	char	*result;
@@ -34,31 +70,4 @@ char	*handle_direct_access(char **cmd_parts)
 		return (result);
 	}
 	return (NULL);
-}
-
-char	*find_path(char *cmd, char **env)
-{
-	char	**all_path;
-	char	**cmd_parts;
-	char	*result;
-	char	*env_path;
-
-	cmd_parts = ft_split(cmd, ' ');
-	if (!cmd_parts)
-		return (NULL);
-	result = handle_direct_access(cmd_parts);
-	if (result)
-		return (result);
-	env_path = my_getenv("PATH", env);
-	if (env_path)
-		all_path = ft_split(env_path, ':');
-	if (!env_path || !all_path)
-	{
-		ft_free_tab(cmd_parts);
-		return (NULL);
-	}
-	result = search_in_path(cmd_parts[0], all_path);
-	ft_free_tab(cmd_parts);
-	ft_free_tab(all_path);
-	return (result);
 }

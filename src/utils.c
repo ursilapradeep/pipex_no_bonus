@@ -3,45 +3,54 @@
 /*                                                        :::      ::::::::   */
 /*   utils.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: us <us@student.42.fr>                      +#+  +:+       +#+        */
+/*   By: uvadakku <uvadakku@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/20 15:16:23 by uvadakku          #+#    #+#             */
-/*   Updated: 2025/11/09 12:43:35 by us               ###   ########.fr       */
+/*   Created: 2025/11/17 11:57:23 by uvadakku          #+#    #+#             */
+/*   Updated: 2025/11/17 12:07:29 by uvadakku         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void	exit_handler(int n_exit)
+char	*find_path(char *cmd, char **env)
 {
-	if (n_exit == 1)
+	char	**all_path;
+	char	**cmd_parts;
+	char	*result;
+	char	*env_path;
+
+	cmd_parts = ft_split(cmd, ' ');
+	if (!cmd_parts)
+		return (NULL);
+	result = handle_direct_access(cmd_parts);
+	if (result)
+		return (result);
+	env_path = my_getenv("PATH", env);
+	if (env_path)
+		all_path = ft_split(env_path, ':');
+	if (!env_path || !all_path)
 	{
-		fprintf(stderr, "./pipex infile cmd cmd outfile\n");
-		exit (1);
+		ft_free_tab(cmd_parts);
+		return (NULL);
 	}
+	result = search_in_path(cmd_parts[0], all_path);
+	ft_free_tab(cmd_parts);
+	ft_free_tab(all_path);
+	return (result);
 }
 
-int	open_file(char *file, int mode)
+void	handle_cmd_error(char **args, char *path)
 {
-	int	ret;
-
-	ret = 0;
-	if (mode == 0)
-		ret = open(file, O_RDONLY);
-	else if (mode == 1)
-		ret = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-	if (ret < 0)
-	{
-		if (mode == 0)
-		{
-			ret = open("/dev/null", O_RDONLY);
-			if (ret < 0)
-				exit(1);
-		}
-		else
-			exit(1);
-	}
-	return (ret);
+	ft_putstr_fd("command not found: ", 2);
+	if (args && args[0])
+		ft_putendl_fd(args[0], 2);
+	else
+		ft_putendl_fd("", 2);
+	if (args)
+		ft_free_tab(args);
+	if (path)
+		free(path);
+	exit(127);
 }
 
 void	ft_free_tab(char **tab)
@@ -57,26 +66,32 @@ void	ft_free_tab(char **tab)
 	free(tab);
 }
 
-char	*my_getenv(char *name, char **env)
+int	open_file(char *file, int mode)
 {
-	int		i;
-	int		j;
-	char	*sub;
+	int	ret;
 
-	i = 0;
-	while (env[i])
+	if (mode == 0)
 	{
-		j = 0;
-		while (env[i][j] && env[i][j] != '=')
-			j++;
-		sub = ft_substr(env[i], 0, j);
-		if (ft_strcmp(sub, name) == 0)
+		ret = open(file, O_RDONLY);
+		if (ret < 0)
 		{
-			free(sub);
-			return (env[i] + j + 1);
+			perror(file);
+			return (-1);
 		}
-		free(sub);
-		i++;
 	}
-	return (NULL);
+	else if (mode == 1)
+	{
+		ret = open(file, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+		if (ret < 0)
+			return (-1);
+	}
+	else
+		return (-1);
+	return (ret);
+}
+
+void	exit_handler(int n_exit)
+{
+	perror("pipex: ");
+	exit(n_exit);
 }

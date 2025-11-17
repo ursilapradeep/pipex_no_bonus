@@ -3,30 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   pipex.c                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: us <us@student.42.fr>                      +#+  +:+       +#+        */
+/*   By: uvadakku <uvadakku@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/10/20 14:07:55 by uvadakku          #+#    #+#             */
-/*   Updated: 2025/11/09 12:28:33 by us               ###   ########.fr       */
+/*   Created: 2025/11/17 11:56:57 by uvadakku          #+#    #+#             */
+/*   Updated: 2025/11/17 11:57:06 by uvadakku         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void	handle_cmd_error(char **args, char *path)
-{
-	ft_putstr_fd("command not found: ", 2);
-	if (args && args[0])
-		ft_putendl_fd(args[0], 2);
-	else
-		ft_putendl_fd("", 2);
-	if (args)
-		ft_free_tab(args);
-	if (path)
-		free(path);
-	exit(127);
-}
-
-void	exec(char *cmd, char **env)
+void	exec_cmd(char *cmd, char **env)
 {
 	char	**args;
 	char	*path;
@@ -46,10 +32,16 @@ void	child(char **av, int *p_fd, char **env)
 	int	fd;
 
 	fd = open_file(av[1], 0);
-	dup2(fd, 0);
-	dup2(p_fd[1], 1);
+	if (fd < 0)
+		exit_handler(1);
+	if (dup2(fd, 0) == -1)
+		exit_handler(1);
+	if (dup2(p_fd[1], 1) == -1)
+		exit_handler(1);
+	close(fd);
 	close(p_fd[0]);
-	exec(av[2], env);
+	close(p_fd[1]);
+	exec_cmd(av[2], env);
 }
 
 void	parent(char **av, int *p_fd, char **env)
@@ -57,17 +49,38 @@ void	parent(char **av, int *p_fd, char **env)
 	int	fd;
 
 	fd = open_file(av[4], 1);
-	dup2(fd, 1);
-	dup2 (p_fd[0], 0);
+	if (fd < 0)
+	{
+		perror(av[4]);
+		close(p_fd[0]);
+		exit(1);
+	}
+	if (dup2(p_fd[0], 0) == -1)
+		exit_handler(1);
+	if (dup2(fd, 1) == -1)
+		exit_handler(1);
+	close(fd);
 	close(p_fd[1]);
-	exec(av[3], env);
+	close(p_fd[0]);
+	exec_cmd(av[3], env);
+}
+
+pid_t	make_fork(void)
+{
+	pid_t	pid;
+
+	pid = fork();
+	if (pid == -1)
+		exit_handler(1);
+	return (pid);
 }
 
 int	main(int argc, char **argv, char **env)
 {
-	int			p_fd[2];
-	pid_t		pid;
-	int			status;
+	int		p_fd[2];
+	pid_t	pid1;
+	pid_t	pid2;
+	int		status;
 
 	if (argc != 5)
 	{
@@ -75,13 +88,18 @@ int	main(int argc, char **argv, char **env)
 		return (1);
 	}
 	if (pipe(p_fd) == -1)
-		exit (-1);
-	pid = fork();
-	if (pid == -1)
-		exit (-1);
-	if (!pid)
-		child (argv, p_fd, env);
-	waitpid(pid, &status, 0);
-	parent(argv, p_fd, env);
-	return (0);
+		exit_handler(1);
+	pid1 = make_fork();
+	if (pid1 == 0)
+		child(argv, p_fd, env);
+	pid2 = make_fork();
+	if (pid2 == 0)
+		parent(argv, p_fd, env);
+	close(p_fd[0]);
+	close(p_fd[1]);
+	waitpid(pid1, NULL, 0);
+	waitpid(pid2, &status, 0);
+	if (WIFEXITED(status))
+		return (WEXITSTATUS(status));
+	return (1);
 }
